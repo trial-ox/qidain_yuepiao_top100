@@ -3,16 +3,13 @@
 # 按 Shift+F10 执行或将其替换为您的代码。
 # 按 双击 Shift 在所有地方搜索类、文件、工具窗口、操作和设置。
 
-
-import requests
-import bs4
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import xlwt
-
-def request_qidian(url):
-    # 访问得到起点对应网站的html界面
-    r = requests.get(url)
-    return r.text
 
 book = xlwt.Workbook(encoding="utf-8", style_compression=0)
 sheet = book.add_sheet("起点月票榜", cell_overwrite_ok=True)
@@ -22,10 +19,36 @@ sheet.write(0, 2, "图片")
 sheet.write(0, 3, "简介")
 sheet.write(0, 4, "更新信息")
 i = 1
+chrome = webdriver.Chrome()
+WAIT = WebDriverWait(chrome, 1000)
+chrome.get("https://www.qidian.com/")
 
-def save(soup):
+def driver():
+
+    link = chrome.find_elements(By.CLASS_NAME, "nav-li")
+    link[1].click()
+
+    bangdan = chrome.find_element(By.CLASS_NAME, "list_type_detective")
+    yuepiao1 = bangdan.find_element(By.TAG_NAME, "li")
+    yuepiao = yuepiao1.find_element(By.TAG_NAME, "a")
+    yuepiao.click()
+    get_source(chrome)
+
+    for i in range (2, 5):
+        next_page = chrome.find_element(By.CLASS_NAME, "lbf-pagination-next")
+        next_page.click()
+        all_l = chrome.window_handles
+        chrome.switch_to.window(all_l[-1])
+        get_source(chrome)
+    next_page = chrome.find_element(By.LINK_TEXT, "5")
+    next_page.click()
+    all_l = chrome.window_handles
+    chrome.switch_to.window(all_l[-1])
+    get_source(chrome)
+    return
 
 
+def save_excel(soup):
     items = soup.find(id="book-img-text").find_all("li")
     global i
     for item in items:
@@ -46,22 +69,16 @@ def save(soup):
 
     return items
 
-
-def main(page):
-    url = "https://www.qidian.com/rank/yuepiao/year2022-month01-page"+ str(page)
-    html = request_qidian(url)
+def get_source(driver):
+    html = driver.page_source
     soup = BeautifulSoup(html, "lxml")
-    save(soup)
+    save_excel(soup)
 
+def main():
+    driver()
 
-
-
-
-
-# 按间距中的绿色按钮以运行脚本。
 if __name__ == '__main__':
-    for i in range(1,6):
-        main(i)
+    main()
 
-book.save("E:/BookRank/起点月票榜.xlsx")
-# 访问 https://www.jetbrains.com/help/pycharm/ 获取 PyCharm 帮助
+
+book.save("E:/BookRank/起点月票榜前100.xlsx")
